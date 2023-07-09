@@ -154,7 +154,8 @@ Resources:
             - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
           CustomActions:
             OnNodeConfigured:
-              Script: https://raw.githubusercontent.com/spack/spack-configs/main/AWS/parallelcluster/postinstall.sh
+              Sequence:
+                - Script1: https://raw.githubusercontent.com/spack/spack-configs/main/AWS/parallelcluster/postinstall.sh
         Scheduling:
           Scheduler: slurm
           SlurmSettings:
@@ -202,7 +203,8 @@ Resources:
           AdditionalSssdConfigs:
             ldap_auth_disable_tls_never_use_in_production: True
             cache_credentials: false
-            override_homedir: /shared/efs/data/home/%u
+            override_homedir: !Join ["/", ["/shared/efs", !Sub "/c-${AWS::StackName}", "/data/home/%u"]]
+            #override_homedir: /shared/efs/data/home/%u
 
 Outputs:
   HeadNodeIp:
@@ -212,4 +214,3 @@ Outputs:
     Description: Any warnings from cluster create or update operations.
     Value: !GetAtt PclusterCluster.validationMessages
 
-# TODO: include cluster name in override_homedir to allow for multiple clusters on same EFS
