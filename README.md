@@ -70,7 +70,7 @@ With the prerequisite infrastructure in place, now we can create the HPC cluster
 2. Choose **Create stack** (with new resources)
 3. Choose **Upload a template file** then upload the file `cfn/cluster.yaml` from this repository.
 4. Choose **Next** then fill out the template as it instructs you to.
-5. Continue on to the end of the CloudWatch stack launch worklow to launch the cluster via this stack.
+5. Continue on to the end of the CloudFormation stack launch worklow to launch the cluster via this stack.
 
 Notes:
 
