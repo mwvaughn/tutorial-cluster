@@ -91,9 +91,9 @@ You have two options to log into the cluster as an admninistrator: SSH or Amazon
 
 Navigate to the **Outputs** section of your cluster CloudFormation stack. The value of `HeadNodeIp` is the public IP address of your head node. You can log into the cluster using your SSH key, the IP address, and the default user name for the instance. 
 
-`ssh -i MY-SSH-KEY.pem USERNAME@IP.ADDRESS`
+`ssh -i MY-SSH-KEY.pem DEFAULT-USERNAME@IP.ADDRESS`
 
-The username will vary depending on the cluster operating system:
+The default username will vary depending on the cluster operating system:
 - Amazon Linux 2: `ec2-user`
 - Centos7: `centos`
 - Ubuntu 18 and Ubuntu 20: `ubuntu` 
@@ -104,9 +104,11 @@ Navigate to the [Amazon EC2 console](https://us-east-2.console.aws.amazon.com/ec
 
 ## Manage AD Users
 
-You can use the AD management node to add, remove, and update cluster users. It has `adcli` and `openldap-clients` tools pre-installed and is configured to communicate with the AD controllers. 
+Users managed via AD will be able to log in via SSH to the cluster head node using the username and password you assign them. 
 
-The management node is inaccessible from the public internet, but you can access it via the AWS Console. Navigate to the [Amazon EC2 console](https://us-east-2.console.aws.amazon.com/ec2/home?region=us-east-2#Instances:instanceState=running) to find your running instances. Select the instance whose name begins with **AdDomainAdminNode**, then choose **Connect**. Now, choose the **Session Manager** tab. Finally, choose **Connect**. You will be logged into the AD management node in a browser-based terminal.
+`ssh AD-MANAGED-USERNAME@IP.ADDRESS`
+
+First, you have to provision some users! You can use the AD management node to do this. The management node is inaccessible from the public internet, but you can access it via the AWS Console. Navigate to the [Amazon EC2 console](https://us-east-2.console.aws.amazon.com/ec2/home?region=us-east-2#Instances:instanceState=running) to find your running instances. Select the instance whose name begins with **AdDomainAdminNode**, then choose **Connect**. Now, choose the **Session Manager** tab. Finally, choose **Connect**. You will be logged into the AD management node in a browser-based terminal.
 
 ### Add a user
 
