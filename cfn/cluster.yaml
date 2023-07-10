@@ -31,9 +31,12 @@ Metadata:
         Parameters: 
           - ComputeSubnetIds
           - ComputeInstanceMax
+          - GpuComputeInstanceMax
+          - MaximumJobDuration
+          - ComputeInstanceRetentionTime
       - 
         Label: 
-          default: "Optional/Miscellaneous"
+          default: "Miscellaneous"
         Parameters: 
           - ParallelClusterVersion
           - SourceBucket
@@ -53,7 +56,7 @@ Parameters:
   ParallelClusterVersion:
     Description: Version of AWS ParallelCluster to use
     Type: String
-    Default: 3.6.0
+    Default: 3.6.1
 
   SourceBucket:
     Description: Bucket to pull recipe templates from
@@ -67,9 +70,35 @@ Parameters:
   #   Default: tutorial
 
   ComputeInstanceMax:
-    Description: Maximum number of compute instances in the queue
+    Description: Maximum number of CPU-only instances in the queue(s)
     Type: Number
     Default: 16
+
+  GpuComputeInstanceMax:
+    Description: Maximum number of GPU instances in the queue(s)
+    Type: Number
+    Default: 16
+
+  MaximumJobDuration:
+    Description: The longest a user job is allowed to run (hh::mm::ss)
+    Type: String
+    AllowedValues:
+         - "04:00:00"
+         - "12:00:00"
+         - "24:00:00"
+         - "48:00:00"
+         - "UNLIMITED"
+    Default: "12:00:00"
+
+  ComputeInstanceRetentionTime:
+    Description: Duration (minutes) after a node becomes idle before it is terminated.
+    Type: Number
+    AllowedValues:
+         - 10
+         - 60
+         - 120
+         - 240
+    Default: 120
 
   KeyName:
     Description: EC2 SSH KeyPair to login to the head node
@@ -80,12 +109,12 @@ Parameters:
     Type: AWS::EC2::Subnet::Id
 
   ComputeSubnetIds:
-    Description: Subnet IDs where compute nodes will launch.
+    Description: Subnet IDs where compute nodes will launch. This should include at least the head node subnet.
     Type: List<AWS::EC2::Subnet::Id>
 
   OS:
     Type: String
-    Default: centos7
+    Default: alinux2
     AllowedValues:
       - alinux2
       - centos7
@@ -121,20 +150,6 @@ Resources:
         - { Version: !Ref ParallelClusterVersion }
       TimeoutInMinutes: 10
 
-  # PclusterVpc:
-  #   Type: AWS::CloudFormation::Stack
-  #   Properties:
-  #     Parameters:
-  #       CidrBlock: 10.3.0.0/16
-  #       CidrPublicSubnetA: 10.3.128.0/20
-  #       CidrPublicSubnetB: 10.3.144.0/20
-  #       CidrPrivateSubnetA: 10.3.0.0/18
-  #       CidrPrivateSubnetB: 10.3.64.0/18
-  #     TemplateURL: !Sub
-  #       - https://${Bucket}.s3.${Region}.amazonaws.com/main/recipes/net/hpc_networking_2az/assets/public-private.cfn.yml
-  #       - { Bucket: !Ref SourceBucket, Region: !Ref AWS::Region }
-  #     TimeoutInMinutes: 10
-
   PclusterCluster:
     Type: Custom::PclusterCluster
     Properties:
@@ -152,18 +167,23 @@ Resources:
           Iam:
             AdditionalIamPolicies:
             - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+          LocalStorage:
+            RootVolume:
+              Size: 256
+              DeleteOnTermination: false
           CustomActions:
             OnNodeConfigured:
               Sequence:
-                - Script1: https://raw.githubusercontent.com/spack/spack-configs/main/AWS/parallelcluster/postinstall.sh
+                - Script: https://raw.githubusercontent.com/spack/spack-configs/main/AWS/parallelcluster/postinstall.sh
         Scheduling:
           Scheduler: slurm
           SlurmSettings:
-            ScaledownIdletime: 120
+            ScaledownIdletime: !Ref ComputeInstanceRetentionTime
+            QueueUpdateStrategy: DRAIN
           SlurmQueues:
           - Name: normal
             CustomSlurmSettings:
-              MaxTime: "24:00:00"
+              MaxTime: !Ref MaximumJobDuration
             ComputeResources:
             - Name: cr1
               Instances:
@@ -176,13 +196,13 @@ Resources:
               SubnetIds: !Ref ComputeSubnetIds
           - Name: gpu
             CustomSlurmSettings:
-              MaxTime: "24:00:00"
+              MaxTime: !Ref MaximumJobDuration
             ComputeResources:
             - Name: gr1
               Instances:
               - InstanceType: g5.4xlarge
               MinCount: 0
-              MaxCount: !Ref ComputeInstanceMax
+              MaxCount: !Ref GpuComputeInstanceMax
             Networking:
               SubnetIds: !Ref ComputeSubnetIds
         SharedStorage:
@@ -203,8 +223,11 @@ Resources:
           AdditionalSssdConfigs:
             ldap_auth_disable_tls_never_use_in_production: True
             cache_credentials: false
-            override_homedir: !Join ["/", ["/shared/efs", !Sub "/c-${AWS::StackName}", "/data/home/%u"]]
-            #override_homedir: /shared/efs/data/home/%u
+            override_homedir: !Join ["/", ["/shared/efs", !Sub "c-${AWS::StackName}", "data/home/%u"]]
+            # override_homedir: /shared/efs/data/home/%u
+        Monitoring:
+          DetailedMonitoring: true
+
 
 Outputs:
   HeadNodeIp:
