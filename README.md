@@ -2,6 +2,17 @@
 
 This is a reference design for tutorial cluster than can accommodate up to 60 active users. It is expected that each will be doing a mixture of interactive (shell) and IDE-driven development, sending off computation and testing runs to batch jobs via Slurm. 
 
+A few key features include:
+- Pre-installed Spack tuned with best practices developed by the AWS HPC Performance Engineering team
+- Longer (but configurable) scale-down period to hold on to nodes while the cluster is in active use
+- Configurable maximum job length (to prevent users from leaving jobs running forever)
+- Aggregation of instance capacity by using multiple instance types
+- Aggregation of instance capacity by using multiple availability zones
+- Multi-user support using AWS Managed Microsoft Active Directory
+- Support for administrator login via AWS Systems Manager
+- A substantial head node to support user sessions
+- Persistent home directories hosted on Amazon EFS
+
 ## Overview
 
 To launch a cluster using this design, briefly:
@@ -83,9 +94,11 @@ The CloudFormation template is organized into distinct sections to help guide yo
 
 Monitor the status of your stack. Once it reaches `CREATE_COMPLETE`, you can log into the cluster.
 
+If you are interested in the details of how this step works, we have recently published a blog on the topic: [Automate your clusters by creating self-documenting HPC with AWS ParallelCluster](https://aws.amazon.com/blogs/hpc/automate-your-clusters-by-creating-self-documenting-hpc-with-aws-parallelcluster/). 
+
 ## Log into the Cluster
 
-You have two options to log into the cluster as an admninistrator: SSH or Amazon SSM. The former is the traditional access mechanism for HPC systems, where you use a local terminal and SSH client. Amazon SSM allows you to log into your cluster directly from the AWS Console. 
+You have two options to log into the cluster as an admninistrator: SSH or AWS Systems Manager (SSM). The former is the traditional access mechanism for HPC systems, where you use a local terminal and SSH client. SSM allows you to log into your cluster directly from the AWS Console, even if the instance is not publicly accessible via the Internet. 
 
 ### SSH
 

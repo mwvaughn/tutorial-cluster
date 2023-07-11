@@ -20,14 +20,14 @@ Metadata:
           - EfsFilesystemId
       - 
         Label: 
-          default: "Cluster"
+          default: "Head Node"
         Parameters: 
           - OS
           - KeyName
           - HeadNodeSubnetId
       - 
         Label: 
-          default: "Cluster:Compute Configuration"
+          default: "Compute Nodes and Queues"
         Parameters: 
           - ComputeSubnetIds
           - ComputeInstanceMax
