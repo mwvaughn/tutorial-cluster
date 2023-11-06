@@ -3,26 +3,22 @@
 This is a reference design for tutorial cluster than can accommodate up to 60 active users. It is expected that each will be doing a mixture of interactive (shell) and IDE-driven development, sending off computation and testing runs to batch jobs via Slurm. 
 
 A few key features include:
-- Pre-installed Spack tuned with best practices developed by the AWS HPC Performance Engineering team
 - Longer (but configurable) scale-down period to hold on to nodes while the cluster is in active use
 - Configurable maximum job length (to prevent users from leaving jobs running forever)
-- Aggregation of instance capacity by using multiple instance types
-- Aggregation of instance capacity by using multiple availability zones
 - Multi-user support using AWS Managed Microsoft Active Directory
 - Support for administrator login via AWS Systems Manager
 - A substantial head node to support user sessions
-- Persistent home directories hosted on Amazon EFS
+- Persistent home directories built on Amazon EFS
+- Modest FSx for Lustre shared storage for workloads requiring low-latency IO.
 
 ## Overview
 
 To launch a cluster using this design, briefly:
-1. Choose an SSH key for logging into the system
-2. Set up networking for ParallelCluster
-3. Launch an instance of AWS Microsoft Managed AD
-4. Create a Amazon Elastic Filesystem (EFS) filesystem to hold user home directories
-5. Using outputs from the previous steps, create the cluster
-
-Except for the SSH key, all assets will be created using CloudFormation templates. 
+1. Create or select an SSH key for logging into the system as administrator
+2. Set up networking for ParallelCluster using a CloudFormation stack
+3. Launch an instance of AWS Microsoft Managed AD using a CloudFormation stack
+4. Create a Amazon Elastic Filesystem (EFS) filesystem using a CloudFormation stack
+5. Using outputs from the previous steps, create the cluster.
 
 ## Choose or create an Amazon EC2 SSH key
 
@@ -30,36 +26,26 @@ Review the available SSH keys in the [Amazon EC2 Console](https://us-east-2.cons
 
 ## Set up Networking
 
-Our cluster design assumes you have a VPC with at two public subnets, each in different availability zones, and two private subnets, also in different availability zones. We have provided a CloudFormation template you can use to set this up.
+Our cluster design assumes you have a VPC with at least one public and two private subnets (in different availability zones). We will use the CloudFormation template from the HPC Recipes on AWS library to set this up.
 
-[![Launch](https://samdengler.github.io/cloudformation-launch-stack-button-svg/images/us-east-2.svg)](https://us-east-2.console.aws.amazon.com/cloudformation/home?region=us-east-2#/stacks/create/review?stackName=tutorial-networking&templateURL=https://cfn3-dev-mwvaughn.s3.us-east-2.amazonaws.com/main/recipes/net/hpc_networking_2az/assets/public-private.cfn.yml)
+[![Launch](https://samdengler.github.io/cloudformation-launch-stack-button-svg/images/us-east-2.svg)](https://console.aws.amazon.com/cloudformation/home?region=us-east-2#/stacks/create/review?stackName=hpc-networking&templateURL=https://aws-hpc-recipes.s3.us-east-1.amazonaws.com/main/recipes/net/hpc_large_scale/assets/main.yaml)
 
-Notes:
-
-If you use the default values provided by the CloudFormation template, you will create the following.
-
-```
-tutorial-networking-HPC-VPC [10.3.0.0/16]
-  - tutorial-networking-Public-SubnetA [10.3.128.0/20]
-  - tutorial-networking-Public-SubnetB [10.3.144.0/20]
-  - tutorial-networking-Private-SubnetA [10.3.0.0/18]
-  - tutorial-networking-Private-SubnetB [10.3.64.0/18]
-```
+Name your stack something memorable, like `hpc-networking` as you will need the name later.
 
 ## Set up AWS Microsoft Managed AD
 
-To make our cluster a multi-user systemm, we integrate it with a directory service. ParallelCluster supports Microsoft Active Directory, and more importantly, supports AWS Microsoft Managed AD. We recommend you use the CloudFormation template we have provided here to set one up. 
+To make our cluster a multi-user systemm, we integrate it with a directory service. ParallelCluster supports Microsoft Active Directory, and more importantly, supports AWS Microsoft Managed AD. We will use the CloudFormation template from the HPC Recipes on AWS library to set this up. 
 
-[![Launch](https://samdengler.github.io/cloudformation-launch-stack-button-svg/images/us-east-2.svg)](https://us-east-2.console.aws.amazon.com/cloudformation/home?region=us-east-2#/stacks/create/review?stackName=tutorial-ad&templateURL=https://cfn3-dev-mwvaughn.s3.us-east-2.amazonaws.com/main/recipes/ad/demo_managed_ad/assets/main.yaml)
+[![Launch](https://samdengler.github.io/cloudformation-launch-stack-button-svg/images/us-east-2.svg)](https://console.aws.amazon.com/cloudformation/home?region=us-east-2#/stacks/create/review?stackName=managed-ab&templateURL=https://aws-hpc-recipes.s3.us-east-1.amazonaws.com/main/recipes/dir/demo_managed_ad/assets/main-import.yaml)
+
+Name your stack something memorable, like `managed-ad` as you will need the name later.
 
 Notes:
-1. Choose the VPC that was created using the networking stack above
-2. Choose **private** subnets A & B, which were created in that VPC
-3. For *EC2 Keypair to access management instance*, choose the SSH key from the first step in this document.
-4. Go have a cup of tea (or two) after launching the stack creation - AD can take a while to provision. 
-5. Note `DomainAddrLdap`, `DomainName`, `DomainReadOnlyUser`, and `PasswordSecretArn` from the CloudFormation stack outputs. You will need them later.
-
-This will create three resources: Two redundant Microsoft Active Directory contollers, one in each subnet, and a management instance for the directory, which will launch in private subnet A. Launching in private subnets helps keep your directory service secure by preventing unwanted access attenpts. 
+1. Provide the name of your networking stack
+2. Leave the values for **UserName** and **UserPassword** totally empty. Users are provided by the LDIF file.
+3. Provide a strong password for **AdminPassword** and **ServiceAccountPassword**
+4. For *EC2 Keypair to access management instance*, choose the SSH key from the first step in this document.
+5. Go have a cup of tea (or two) after launching the stack - AD can take a while to provision. 
 
 ## Set up Amazon Elastic File System
 
@@ -67,12 +53,13 @@ We use an external filesystem for user home directories. Since our cluster can s
 
 [![Launch](https://samdengler.github.io/cloudformation-launch-stack-button-svg/images/us-east-2.svg)](https://us-east-2.console.aws.amazon.com/cloudformation/home?region=us-east-2#/stacks/create/review?stackName=tutorial-home-efs&templateURL=https://cfn3-dev-mwvaughn.s3.us-east-2.amazonaws.com/main/recipes/storage/efs/assets/main.yml)
 
+Name your stack something memorable, like `home-efs` as you will need the name later.
+
 Notes:
 1. Choose the VPC that was created using the networking stack above
-2. Choose **public** subnets A & B, which were created in that VPC
-3. Note `EFSFilesystemId` from the CloudFormation stack outputs. You will need it later.
+2. Choose **private** subnets A & B, which were created in that VPC (also using the networking stack)
 
-This will create an EFS filesystem with mount targets in each of the public subnets. 
+This will create an EFS filesystem with mount targets in each subnets. It also create a self-referencing security group that your cluster nodes will join to grant them access to the filesystem.
 
 ## Set up the Cluster
 
@@ -86,15 +73,13 @@ With the prerequisite infrastructure in place, now we can create the HPC cluster
 Notes:
 
 The CloudFormation template is organized into distinct sections to help guide you in setting up the system. 
-- Active Directory
-- Amazon Elastic Filesystem
-- Head Node
-- Compute Nodes and Queues
-- Miscellaneous
+- HPC Recipes for AWS CloudFormation Stacks
+- Cluster Head Node
+- Cluster Queues and Compute Nodes
 
-Monitor the status of your stack. Once it reaches `CREATE_COMPLETE`, you can log into the cluster.
+Provide the names of the relevant CloudFormation stacks, then finish parameterizing the cluster launch.
 
-If you are interested in the details of how this step works, we have recently published a blog on the topic: [Automate your clusters by creating self-documenting HPC with AWS ParallelCluster](https://aws.amazon.com/blogs/hpc/automate-your-clusters-by-creating-self-documenting-hpc-with-aws-parallelcluster/). 
+Monitor the status of your stack. Once it reaches `CREATE_COMPLETE`, you can access the cluster. 
 
 ## Log into the Cluster
 
@@ -139,7 +124,9 @@ You will need the ID for the directory you have created. You can find it under `
 
 You can do other administrative tasks from the management node. We recommend you consult the **Manage AD users and groups** section of tutorial **[Integrating Active Directory](https://docs.aws.amazon.com/parallelcluster/latest/ug/tutorials_05_multi-user-ad.html)** to learn more. 
 
-## Install Shared Software
+## Shared Storage
 
-In addition to the persistent EFS filesystem used for user home directories, we also create a shared filesystem for software. It is mounted at `/shared/efs/apps`. You can put whatever else you want to here, but we have taken the liberty of pre-installing Spack on it at `/shared/efs/apps/spack`. To do so, we used the Spack configs described in the AWs HPC Blog post *[Install optimized software with Spack configs for AWS ParallelCluster](https://aws.amazon.com/blogs/hpc/install-optimized-software-with-spack-configs-for-aws-parallelcluster/)*.
+There are two shared filesystems on the cluster:
+* `/shared/home` - Amazon EFS. Used for AD user home directories. Also usable for shared software (you will have to manage a directory structure for that yourself)
+* `/shared/work` - Amazon FSx for Lustre. High-speed Lustre filesystem. All users should have read/write access to it. 
 

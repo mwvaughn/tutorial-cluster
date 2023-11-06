@@ -1,0 +1,228 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Multi-user HPC7g training cluster with shared storage.
+
+Metadata: 
+  AWS::CloudFormation::Interface: 
+    ParameterGroups: 
+      - 
+        Label: 
+          default: "HPC Recipes for AWS CloudFormation Stacks"
+        Parameters:
+          - NetworkStackName
+          - ADStackName
+          - EFSStackName
+      - 
+        Label: 
+          default: "Cluster Head Node"
+        Parameters: 
+          - OS
+          - KeyName
+          - AllowedIps
+      - 
+        Label: 
+          default: "Cluster Queues and Compute Nodes"
+        Parameters: 
+          - ComputeInstanceMax
+          - MaximumJobDuration
+          - ComputeInstanceRetentionTime
+
+Parameters:
+
+  NetworkStackName:
+    Description: Stack providing VPC and subnets
+    Type: String
+
+  ADStackName:
+    Description: Stack providing an Active Directory
+    Type: String
+
+  EFSStackName:
+    Description: Stack providing a persistent EFS filesystem
+    Type: String
+
+  AllowedIps:
+    Description: CIDR-formatted IP or range for SSH connections to the cluster
+    Type: String
+    Default: 0.0.0.0/0
+    AllowedPattern: ^((\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2}))?$
+    ConstraintDescription: AllowedIps must be a valid IP or network range of the form x.x.x.x/x. specify your IP/NETMASK (e.g x.x.x/32 or x.x.x.x/24 for subnet range)
+
+  ComputeInstanceMax:
+    Description: Maximum number of CPU-only instances in the queue(s)
+    Type: Number
+    Default: 16
+    MinValue: 1
+
+  MaximumJobDuration:
+    Description: The longest a user job is allowed to run (hh::mm::ss)
+    Type: String
+    AllowedValues:
+         - "04:00:00"
+         - "08:00:00"
+         - "12:00:00"
+         - "24:00:00"
+         - "48:00:00"
+         - "UNLIMITED"
+    Default: "08:00:00"
+
+  ComputeInstanceRetentionTime:
+    Description: Duration (minutes) after a node becomes idle before it is terminated.
+    Type: Number
+    AllowedValues:
+         - 10
+         - 60
+         - 120
+         - 240
+    Default: 120
+
+  KeyName:
+    Description: EC2 SSH KeyPair to access the head node
+    Type: AWS::EC2::KeyPair::KeyName
+
+  OS:
+    Type: String
+    Default: alinux2
+    AllowedValues:
+      - alinux2
+      - centos7
+      - ubuntu2004
+      - rhel8
+    Description: Cluster operating system [Default - alinux2]
+
+  FSxSize:
+    Type: Number
+    Description: Size of FSx for Lustre volume at /fsx
+    Default: 2400
+    MinValue: 1200
+    AllowedValues:
+         - 1200
+         - 2400
+         - 4800
+         - 7200
+         - 9600
+
+Mappings:
+  ParallelCluster:
+    Constants:
+      Version: 3.7.2
+
+Conditions:
+  GovCloud: !Equals [!Ref AWS::Partition, 'aws-us-gov']
+  China: !Equals [!Ref AWS::Partition, 'aws-cn']
+
+Resources:
+
+  PclusterClusterProvider:
+    Type: AWS::CloudFormation::Stack
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      TemplateURL: !Sub
+        - https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${AWS::URLSuffix}/parallelcluster/${Version}/templates/custom_resource/cluster.yaml
+        - { Version: !FindInMap [ParallelCluster, Constants, Version] }
+      TimeoutInMinutes: 10
+
+  PclusterCluster:
+    Type: Custom::PclusterCluster
+    Properties:
+      ServiceToken: !GetAtt [ PclusterClusterProvider , Outputs.ServiceToken ]
+      ClusterName: !Sub 'c-${AWS::StackName}'
+      ClusterConfiguration:
+        Image:
+          Os: !Ref OS
+        HeadNode:
+          InstanceType: c7g.16xlarge
+          Networking:
+            SubnetId: {"Fn::ImportValue" : {"Fn::Sub" : "${NetworkStackName}-DefaultPublicSubnet"}}
+            AdditionalSecurityGroups:
+              - {"Fn::ImportValue" : {"Fn::Sub" : "${EFSStackName}-SecurityGroupId"}}
+          Ssh:
+            KeyName: !Ref KeyName
+            AllowedIps: !Ref AllowedIps
+          Iam:
+            AdditionalIamPolicies:
+            - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+            - Policy: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+          LocalStorage:
+            RootVolume:
+              Size: 256
+              DeleteOnTermination: true
+          # CustomActions:
+          #   OnNodeConfigured:
+          #     Sequence:
+          #       - Script: https://raw.githubusercontent.com/spack/spack-configs/main/AWS/parallelcluster/postinstall.sh
+        Scheduling:
+          Scheduler: slurm
+          SlurmSettings:
+            ScaledownIdletime: !Ref ComputeInstanceRetentionTime
+            QueueUpdateStrategy: TERMINATE
+          SlurmQueues:
+          - Name: graviton
+            CustomSlurmSettings:
+              MaxTime: !Ref MaximumJobDuration
+            ComputeResources:
+            - Name: nodes
+              Instances:
+                - InstanceType: hpc7g.16xlarge
+              MinCount: 0
+              MaxCount: !Ref ComputeInstanceMax
+              DisableSimultaneousMultithreading: true
+              Efa:
+                Enabled: true
+            Networking:
+              SubnetIds:
+                - {"Fn::ImportValue" : {"Fn::Sub" : "${NetworkStackName}-DefaultPrivateSubnet"}}
+              PlacementGroup:
+                Enabled: true
+              AdditionalSecurityGroups:
+                - {"Fn::ImportValue" : {"Fn::Sub" : "${EFSStackName}-SecurityGroupId"}}
+            ComputeSettings:
+              LocalStorage:
+                RootVolume:
+                  VolumeType: gp3
+            Iam:
+              AdditionalIamPolicies:
+                - Policy: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+        SharedStorage:
+          - Name: Efs0
+            StorageType: Efs
+            MountDir: /shared/home
+            EfsSettings:
+              FileSystemId: {"Fn::ImportValue" : {"Fn::Sub" : "${EFSStackName}-EFSFilesystemId"}}
+          - Name: FsxLustre0
+            StorageType: FsxLustre          
+            MountDir: /shared/work
+            FsxLustreSettings:
+              DeletionPolicy: Delete
+              StorageCapacity: !Ref FSxSize
+              DeploymentType: SCRATCH_2
+        DirectoryService:
+          DomainName: {"Fn::ImportValue" : {"Fn::Sub" : "${ADStackName}-DomainName"}}
+          DomainAddr: {"Fn::ImportValue" : {"Fn::Sub" : "${ADStackName}-DomainAddrLdap"}}
+          PasswordSecretArn: {"Fn::ImportValue" : {"Fn::Sub" : "${ADStackName}-PasswordSecretArn"}}
+          DomainReadOnlyUser: {"Fn::ImportValue" : {"Fn::Sub" : "${ADStackName}-DomainServiceAccount"}}
+          GenerateSshKeysForUsers: true
+          AdditionalSssdConfigs:
+            ldap_auth_disable_tls_never_use_in_production: True
+            cache_credentials: false
+            override_homedir: /shared/home/%u
+        Monitoring:
+          DetailedMonitoring: true
+
+
+Outputs:
+  HeadNodeIp:
+    Description: The Public IP address of the HeadNode
+    Value: !GetAtt [ PclusterCluster, headNode.publicIpAddress ]
+  SystemManagerUrl:
+    Description: URL to access the HeadNode via SystemManager
+    Value: !Sub
+      - https://${ConsoleDomain}/systems-manager/session-manager/${InstanceId}?region=${AWS::Region}
+      - { ConsoleDomain: !If [ GovCloud, 'console.amazonaws-us-gov.com', !If [ China, 'console.amazonaws.cn', !Sub '${AWS::Region}.console.aws.amazon.com']],
+          InstanceId: !GetAtt [ PclusterCluster, headNode.instanceId ]
+        }
+  ValidationMessages:
+    Description: Any warnings from cluster create or update operations.
+    Value: !GetAtt PclusterCluster.validationMessages
+
