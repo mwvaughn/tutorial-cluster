@@ -66,7 +66,7 @@ This will create an EFS filesystem with mount targets in each subnets. It also c
 With the prerequisite infrastructure in place, now we can create the HPC cluster. We have provided a template for this, which you can upload to CloudFormation.
 1. Navigate to the [AWS CloudFormation console](https://console.aws.amazon.com/cloudformation/home?region=us-east-1)
 2. Choose **Create stack** (with new resources)
-3. Choose **Upload a template file** then upload the file `cfn/cluster.yaml` from this repository.
+3. Choose **Upload a template file** then upload the file `cfn/launch.yaml` from this repository.
 4. Choose **Next** then fill out the template as it instructs you to.
 5. Continue on to the end of the CloudFormation stack launch worklow to launch the cluster via this stack.
 
