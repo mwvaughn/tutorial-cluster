@@ -22,13 +22,13 @@ To launch a cluster using this design, briefly:
 
 ## Choose or create an Amazon EC2 SSH key
 
-Review the available SSH keys in the [Amazon EC2 Console](https://us-east-2.console.aws.amazon.com/ec2/home?region=us-east-2#KeyPairs:). If you don't recognize any of these, create a new one. You will use this SSH key to log into management instances.
+Review the available SSH keys in the [Amazon EC2 Console](https://us-east-1.console.aws.amazon.com/ec2/home?region=us-east-1#KeyPairs:). If you don't recognize any of these, create a new one. You will use this SSH key to log into management instances.
 
 ## Set up Networking
 
 Our cluster design assumes you have a VPC with at least one public and two private subnets (in different availability zones). We will use the CloudFormation template from the HPC Recipes on AWS library to set this up.
 
-[![Launch](https://samdengler.github.io/cloudformation-launch-stack-button-svg/images/us-east-2.svg)](https://console.aws.amazon.com/cloudformation/home?region=us-east-2#/stacks/create/review?stackName=hpc-networking&templateURL=https://aws-hpc-recipes.s3.us-east-1.amazonaws.com/main/recipes/net/hpc_large_scale/assets/main.yaml)
+[![Launch](https://samdengler.github.io/cloudformation-launch-stack-button-svg/images/us-east-1.svg)](https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/create/review?stackName=hpc-networking&templateURL=https://aws-hpc-recipes.s3.us-east-1.amazonaws.com/main/recipes/net/hpc_large_scale/assets/main.yaml)
 
 Name your stack something memorable, like `hpc-networking` as you will need the name later.
 
@@ -36,7 +36,7 @@ Name your stack something memorable, like `hpc-networking` as you will need the 
 
 To make our cluster a multi-user systemm, we integrate it with a directory service. ParallelCluster supports Microsoft Active Directory, and more importantly, supports AWS Microsoft Managed AD. We will use the CloudFormation template from the HPC Recipes on AWS library to set this up. 
 
-[![Launch](https://samdengler.github.io/cloudformation-launch-stack-button-svg/images/us-east-2.svg)](https://console.aws.amazon.com/cloudformation/home?region=us-east-2#/stacks/create/review?stackName=managed-ab&templateURL=https://aws-hpc-recipes.s3.us-east-1.amazonaws.com/main/recipes/dir/demo_managed_ad/assets/main-import.yaml)
+[![Launch](https://samdengler.github.io/cloudformation-launch-stack-button-svg/images/us-east-1.svg)](https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/create/review?stackName=managed-ab&templateURL=https://aws-hpc-recipes.s3.us-east-1.amazonaws.com/main/recipes/dir/demo_managed_ad/assets/main-import.yaml)
 
 Name your stack something memorable, like `managed-ad` as you will need the name later.
 
@@ -51,7 +51,7 @@ Notes:
 
 We use an external filesystem for user home directories. Since our cluster can span availability zones, we use EFS. We recommend you use the CloudFormation template we have provided here to set it up. 
 
-[![Launch](https://samdengler.github.io/cloudformation-launch-stack-button-svg/images/us-east-2.svg)](https://us-east-2.console.aws.amazon.com/cloudformation/home?region=us-east-2#/stacks/create/review?stackName=tutorial-home-efs&templateURL=https://cfn3-dev-mwvaughn.s3.us-east-2.amazonaws.com/main/recipes/storage/efs/assets/main.yml)
+[![Launch](https://samdengler.github.io/cloudformation-launch-stack-button-svg/images/us-east-1.svg)](https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/create/review?stackName=tutorial-home-efs&templateURL=https://cfn3-dev-mwvaughn.s3.us-east-1.amazonaws.com/main/recipes/storage/efs/assets/main.yml)
 
 Name your stack something memorable, like `home-efs` as you will need the name later.
 
@@ -64,7 +64,7 @@ This will create an EFS filesystem with mount targets in each subnets. It also c
 ## Set up the Cluster
 
 With the prerequisite infrastructure in place, now we can create the HPC cluster. We have provided a template for this, which you can upload to CloudFormation.
-1. Navigate to the [AWS CloudFormation console](https://console.aws.amazon.com/cloudformation/home?region=us-east-2)
+1. Navigate to the [AWS CloudFormation console](https://console.aws.amazon.com/cloudformation/home?region=us-east-1)
 2. Choose **Create stack** (with new resources)
 3. Choose **Upload a template file** then upload the file `cfn/cluster.yaml` from this repository.
 4. Choose **Next** then fill out the template as it instructs you to.
@@ -98,7 +98,7 @@ The default username will vary depending on the cluster operating system:
 
 ### Amazon SSM
 
-Navigate to the [Amazon EC2 console](https://us-east-2.console.aws.amazon.com/ec2/home?region=us-east-2#Instances:instanceState=running) to find your running instances. Select the instance named **HeadNode**, then choose **Connect**. Now, choose the **Session Manager** tab. Finally, choose **Connect**. You will be logged into the head node in a browser-based terminal.
+Navigate to the [Amazon EC2 console](https://us-east-1.console.aws.amazon.com/ec2/home?region=us-east-1#Instances:instanceState=running) to find your running instances. Select the instance named **HeadNode**, then choose **Connect**. Now, choose the **Session Manager** tab. Finally, choose **Connect**. You will be logged into the head node in a browser-based terminal.
 
 ## Manage AD Users
 
@@ -106,7 +106,7 @@ Users managed via AD will be able to log in via SSH to the cluster head node usi
 
 `ssh AD-MANAGED-USERNAME@IP.ADDRESS`
 
-First, you have to provision some users! You can use the AD management node to do this. The management node is inaccessible from the public internet, but you can access it via the AWS Console. Navigate to the [Amazon EC2 console](https://us-east-2.console.aws.amazon.com/ec2/home?region=us-east-2#Instances:instanceState=running) to find your running instances. Select the instance whose name begins with **AdDomainAdminNode**, then choose **Connect**. Now, choose the **Session Manager** tab. Finally, choose **Connect**. You will be logged into the AD management node in a browser-based terminal.
+First, you have to provision some users! You can use the AD management node to do this. The management node is inaccessible from the public internet, but you can access it via the AWS Console. Navigate to the [Amazon EC2 console](https://us-east-1.console.aws.amazon.com/ec2/home?region=us-east-1#Instances:instanceState=running) to find your running instances. Select the instance whose name begins with **AdDomainAdminNode**, then choose **Connect**. Now, choose the **Session Manager** tab. Finally, choose **Connect**. You will be logged into the AD management node in a browser-based terminal.
 
 ### Add a user
 
@@ -118,7 +118,7 @@ You will be prompted for a password. Provide the value you used for `AdminPasswo
 
 You will need the ID for the directory you have created. You can find it under `Outputs/DirectoryId` in the CloudFormation stack you used to it up. 
 
-`aws --region "us-east-2" ds reset-user-password --directory-id "d-abcdef01234567890" --user-name "clusteruser" --new-password "new-p@ssw0rd"`
+`aws --region "us-east-1" ds reset-user-password --directory-id "d-abcdef01234567890" --user-name "clusteruser" --new-password "new-p@ssw0rd"`
 
 ### Other operations
 
