@@ -51,7 +51,7 @@ Notes:
 
 We use an external filesystem for user home directories. Since our cluster can span availability zones, we use EFS. We recommend you use the CloudFormation template we have provided here to set it up. 
 
-[![Launch](https://samdengler.github.io/cloudformation-launch-stack-button-svg/images/us-east-1.svg)](https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/create/review?stackName=tutorial-home-efs&templateURL=https://cfn3-dev-mwvaughn.s3.us-east-1.amazonaws.com/main/recipes/storage/efs/assets/main.yml)
+[![Launch](https://samdengler.github.io/cloudformation-launch-stack-button-svg/images/us-east-1.svg)](https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/create/review?stackName=home-efs&templateURL=https://aws-hpc-recipes.s3.us-east-1.amazonaws.com/main/recipes/storage/efs_simple/assets/main.yaml)
 
 Name your stack something memorable, like `home-efs` as you will need the name later.
 
@@ -116,13 +116,13 @@ You will be prompted for a password. Provide the value you used for `AdminPasswo
 
 ### Change a user password
 
-You will need the ID for the directory you have created. You can find it under `Outputs/DirectoryId` in the CloudFormation stack you used to it up. 
+You will need the ID for the directory you have created. You can find it under `Outputs/DirectoryId` in the CloudFormation stack you used to set it up. 
 
 `aws --region "us-east-1" ds reset-user-password --directory-id "d-abcdef01234567890" --user-name "clusteruser" --new-password "new-p@ssw0rd"`
 
 ### Other operations
 
-You can do other administrative tasks from the management node. We recommend you consult the **Manage AD users and groups** section of tutorial **[Integrating Active Directory](https://docs.aws.amazon.com/parallelcluster/latest/ug/tutorials_05_multi-user-ad.html)** to learn more. 
+You can do other administrative tasks from the management node. We recommend you consult the **Manage AD users and groups** section of the tutorial **[Integrating Active Directory](https://docs.aws.amazon.com/parallelcluster/latest/ug/tutorials_05_multi-user-ad.html)** to learn more. 
 
 ## Shared Storage
 
