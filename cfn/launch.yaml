@@ -87,6 +87,7 @@ Parameters:
       - alinux2
       - centos7
       - ubuntu2004
+      - ubuntu2204
       - rhel8
     Description: Cluster operating system [Default - alinux2]
 
@@ -105,7 +106,7 @@ Parameters:
 Mappings:
   ParallelCluster:
     Constants:
-      Version: 3.7.2
+      Version: 3.8.0
 
 Conditions:
   GovCloud: !Equals [!Ref AWS::Partition, 'aws-us-gov']
